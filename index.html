@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>V.O.I.D. Assistant</title>
+    <style>
+        :root {
+            --bg-color: #0f0f13;
+            --surface-color: #1c1c21;
+            --primary-color: #4a90e2;
+            --text-main: #ffffff;
+            --text-muted: #8e8e93;
+            --error-color: #ff453a;
+            --user-bubble: #2c2c35;
+            --ai-bubble: #1a3d66;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* Sidebar / History */
+        #sidebar {
+            width: 250px;
+            background-color: var(--surface-color);
+            border-right: 1px solid #2c2c35;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-bottom: 1px solid #2c2c35;
+        }
+
+        #history-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .history-item {
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-bottom: 5px;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .history-item:hover {
+            background-color: var(--user-bubble);
+        }
+
+        /* Main Content */
+        #main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        /* Views */
+        .view {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+        }
+
+        .view.active {
+            display: flex;
+        }
+
+        /* Dashboard */
+        #dashboard {
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        h1 {
+            font-size: 3rem;
+            letter-spacing: 5px;
+            margin-bottom: 50px;
+        }
+
+        .btn-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            width: 100%;
+            max-width: 400px;
+        }
+
+        button {
+            background-color: var(--surface-color);
+            color: var(--text-main);
+            border: 1px solid #3a3a45;
+            padding: 15px 20px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        /* Chat Interface */
+        #chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            max-width: 70%;
+            padding: 15px;
+            border-radius: 12px;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .user-msg {
+            background-color: var(--user-bubble);
+            align-self: flex-end;
+            border-bottom-right-radius: 2px;
+        }
+
+        .ai-msg {
+            background-color: var(--ai-bubble);
+            align-self: flex-start;
+            border-bottom-left-radius: 2px;
+        }
+
+        .system-msg {
+            background-color: transparent;
+            color: var(--error-color);
+            align-self: center;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+
+        .replay-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.2rem;
+            position: absolute;
+            bottom: -25px;
+            right: 0;
+            padding: 0;
+        }
+
+        .replay-btn:hover {
+            color: var(--primary-color);
+        }
+
+        .gen-image {
+            max-width: 100%;
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        /* Input Area */
+        #input-area {
+            padding: 20px;
+            background-color: var(--surface-color);
+            display: flex;
+            gap: 10px;
+            border-top: 1px solid #2c2c35;
+        }
+
+        input[type="text"] {
+            flex: 1;
+            background-color: #2c2c35;
+            border: 1px solid #3a3a45;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        #status-bar {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="sidebar">
+        <div class="sidebar-header" onclick="navTo('dashboard')" style="cursor:pointer;">
+            V.O.I.D. Menu
+        </div>
+        <div id="history-list">
+            </div>
+    </div>
+
+    <div id="main-content">
+        <div id="status-bar">Wake-Word: Listening...</div>
+
+        <div id="dashboard" class="view active">
+            <h1>V.O.I.D.</h1>
+            <div class="btn-grid">
+                <button onclick="startChat('chat')">Chat with V.O.I.D.</button>
+                <button onclick="startChat('research')">Deep Research</button>
+                <button onclick="startChat('image')">Generate Image</button>
+            </div>
+        </div>
+
+        <div id="chat-view" class="view">
+            <div id="chat-container">
+                </div>
+            <div id="input-area">
+                <input type="text" id="user-input" placeholder="Message V.O.I.D. (Type or say 'Hey VOID')..." onkeypress="handleEnter(event)">
+                <button onclick="sendMessage()">Send</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- CONFIGURATION & STATE ---
+        const GEMINI_API_KEY = "YOUR_GEMINI_API_KEY"; // Replace with real key in production backend
+        let currentMode = 'chat'; // 'chat', 'research', 'image'
+        let chatHistory = [];
+        const SYSTEM_PROMPT = "You are V.O.I.D., a highly advanced AI assistant. Your goal is to provide accurate, real, and helpful information. You must provide 100% real information. No hallucinations. If information is unavailable, cite sources or state that you cannot verify it. Be direct, efficient, and professional. NEVER generate video.";
+
+        // --- UI NAVIGATION ---
+        function navTo(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            if (viewId === 'dashboard') {
+                document.getElementById('dashboard').classList.add('active');
+            } else {
+                document.getElementById('chat-view').classList.add('active');
+            }
+        }
+
+        function startChat(mode) {
+            currentMode = mode;
+            navTo('chat-view');
+            document.getElementById('chat-container').innerHTML = '';
+            
+            let welcomeMsg = "V.O.I.D. Online. How can I assist you?";
+            if (mode === 'research') welcomeMsg = "Deep Research Mode Activated. Awaiting query...";
+            if (mode === 'image') welcomeMsg = "Image Generator Activated. Describe your visual...";
+            
+            addMessage(welcomeMsg, 'ai');
+        }
+
+        // --- MESSAGE HANDLING ---
+        function handleEnter(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        async function sendMessage() {
+            const inputField = document.getElementById('user-input');
+            const text = inputField.value.trim();
+            if (!text) return;
+
+            addMessage(text, 'user');
+            inputField.value = '';
+            saveToHistory(text);
+
+            try {
+                if (currentMode === 'image') {
+                    await handleImageGeneration(text);
+                } else if (currentMode === 'research') {
+                    await handleDeepResearch(text);
+                } else {
+                    await handleStandardChat(text);
+                }
+            } catch (error) {
+                handleNetworkError(error);
+            }
+        }
+
+        function addMessage(text, sender, imageUrl = null) {
+            const container = document.getElementById('chat-container');
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message ${sender}-msg`;
+            
+            if (imageUrl) {
+                msgDiv.innerHTML = `<p>${text}</p><img src="${imageUrl}" class="gen-image" alt="Generated Image"/>`;
+            } else {
+                msgDiv.innerText = text;
+            }
+
+            if (sender === 'ai') {
+                const replayBtn = document.createElement('button');
+                replayBtn.className = 'replay-btn';
+                replayBtn.innerHTML = '🔊';
+                replayBtn.onclick = () => speakText(text);
+                msgDiv.appendChild(replayBtn);
+                speakText(text); // Auto-speak upon generation
+            }
+
+            container.appendChild(msgDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // --- API INTEGRATION (Mocked Fetch Logic for Gemini) ---
+        
+        async function fetchWithTimeout(resource, options = {}) {
+            const { timeout = 15000 } = options; // 15 second timeout
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeout);
+            const response = await fetch(resource, { ...options, signal: controller.signal });
+            clearTimeout(id);
+            return response;
+        }
+
+        async function handleStandardChat(prompt) {
+            // Check network
+            if (!navigator.onLine) throw new Error("Network Disconnected.");
+
+            // Construct Gemini 2.5 Flash API payload
+            // Note: Direct frontend calls expose API keys. In production, proxy via backend.
+            /* const response = await fetchWithTimeout(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    system_instruction: { parts: { text: SYSTEM_PROMPT } },
+                    contents: [{ parts: [{ text: prompt }] }]
+                })
+            });
+            const data = await response.json();
+            const aiText = data.candidates[0].content.parts[0].text;
+            */
+            
+            // Simulation for demo purposes since API keys shouldn't be in HTML
+            setTimeout(() => {
+                addMessage(`[Simulated Gemini 2.5 Flash Response]: Acknowledged. Processed query: "${prompt}".`, 'ai');
+            }, 1000);
+        }
+
+        async function handleDeepResearch(prompt) {
+            // In a real app, this would use Gemini with Google Search Grounding enabled
+            setTimeout(() => {
+                addMessage(`[Research Complete]\nSource 1: Verified Domain.\nFact: Analyzing context for "${prompt}".`, 'ai');
+            }, 2000);
+        }
+
+        async function handleImageGeneration(prompt) {
+            // Uses Imagen endpoint via Gemini API
+            setTimeout(() => {
+                // Placeholder image from Unsplash to simulate image generation
+                const mockImageUrl = `https://source.unsplash.com/800x600/?${encodeURIComponent(prompt)}`;
+                addMessage("Image generation complete.", 'ai', mockImageUrl);
+            }, 2500);
+        }
+
+        function handleNetworkError(error) {
+            let errorMsg = "System Error: Connection failed.";
+            if (error.name === 'AbortError') errorMsg = "System Error: Request Timed Out. Retrying...";
+            if (error.message.includes("Network Disconnected")) errorMsg = "Offline Fallback: Network Disconnected. Please check your connection.";
+            
+            const container = document.getElementById('chat-container');
+            const errDiv = document.createElement('div');
+            errDiv.className = 'message system-msg';
+            errDiv.innerText = errorMsg;
+            container.appendChild(errDiv);
+        }
+
+        // --- TEXT TO SPEECH (TTS) ---
+        function speakText(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel(); // Stop current speech
+                const utterance = new SpeechSynthesisUtterance(text);
+                
+                // Attempt to find a high-quality network voice
+                const voices = window.speechSynthesis.getVoices();
+                const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Neural')) || voices[0];
+                if (preferredVoice) utterance.voice = preferredVoice;
+                
+                utterance.rate = 1.0;
+                utterance.pitch = 0.9; // Slightly deeper for V.O.I.D.
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // --- WAKE WORD (Speech Recognition) ---
+        function initWakeWord() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (SpeechRecognition) {
+                const recognition = new SpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+
+                recognition.onresult = (event) => {
+                    const transcript = event.results[event.results.length - 1][0].transcript.toLowerCase();
+                    if (transcript.includes("hey void")) {
+                        document.getElementById('status-bar').innerText = "Wake-Word: Triggered! Listening...";
+                        document.getElementById('status-bar').style.color = "var(--primary-color)";
+                        // Stop wake-word listening, start actual command listening here in production
+                    }
+                };
+
+                recognition.onerror = () => {
+                    document.getElementById('status-bar').innerText = "Wake-Word: Error / Offline";
+                };
+
+                recognition.start();
+            } else {
+                document.getElementById('status-bar').innerText = "Wake-Word: Not supported in this browser.";
+            }
+        }
+
+        // --- LOCAL HISTORY (LocalStorage mocking SQLite/Hive) ---
+        function saveToHistory(prompt) {
+            const snippet = prompt.length > 25 ? prompt.substring(0, 25) + '...' : prompt;
+            chatHistory.unshift(snippet);
+            updateHistoryUI();
+            localStorage.setItem('void_history', JSON.stringify(chatHistory));
+        }
+
+        function loadHistory() {
+            const saved = localStorage.getItem('void_history');
+            if (saved) {
+                chatHistory = JSON.parse(saved);
+                updateHistoryUI();
+            }
+        }
+
+        function updateHistoryUI() {
+            const list = document.getElementById('history-list');
+            list.innerHTML = '';
+            chatHistory.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.innerText = item;
+                div.onclick = () => alert("In production, this would restore the SQLite context for: " + item);
+                list.appendChild(div);
+            });
+        }
+
+        // Initialize
+        window.onload = () => {
+            loadHistory();
+            initWakeWord();
+            // Load voices
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.onvoiceschanged = () => {}; 
+            }
+        };
+    </script>
+</body>
+                  </html>
+
